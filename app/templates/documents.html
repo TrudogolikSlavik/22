@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}Мои документы - Knowledge Base{% endblock %}
+{% block header %}Мои документы{% endblock %}
+
+{% block actions %}
+<div class="btn-group me-2">
+    <a href="/upload" class="btn btn-sm btn-outline-primary">
+        <i class="fas fa-plus"></i> Добавить документ
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    {% if documents %}
+        {% for document in documents %}
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card document-card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">{{ document.title }}</h5>
+                    <p class="card-text text-muted small">
+                        {% if document.content %}
+                            {{ document.content[:100] }}{% if document.content|length > 100 %}...{% endif %}
+                        {% else %}
+                            <em>Нет содержимого</em>
+                        {% endif %}
+                    </p>
+                    {% if document.file_type %}
+                        <span class="badge bg-secondary">{{ document.file_type }}</span>
+                    {% endif %}
+                    {% if document.file_size %}
+                        <span class="badge bg-info">{{ (document.file_size / 1024)|round(1) }} KB</span>
+                    {% endif %}
+                </div>
+                <div class="card-footer">
+                    <small class="text-muted">
+                        Создан: {{ document.created_at.strftime('%d.%m.%Y %H:%M') }}
+                    </small>
+                    <div class="mt-2">
+                        <a href="/api/documents/{{ document.id }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i> Просмотр
+                        </a>
+                        <button class="btn btn-sm btn-outline-info" onclick="analyzeDocument({ document,id })">
+                            <i class="fas fa-brain"></i> Анализ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="col-12">
+            <div class="alert alert-info">
+                <h5>У вас пока нет документов</h5>
+                <p>Начните с загрузки первого документа!</p>
+                <a href="/upload" class="btn btn-primary">Загрузить документ</a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function analyzeDocument(documentId) {
+    fetch(`/documents/${documentId}/analyze`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(`Анализ документа:\n\nСуммаризация: ${data.summary}\n\nКлючевые слова: ${data.keywords.join(', ')}`);
+    })
+    .catch(error => {
+        alert('Ошибка при анализе документа');
+    });
+}
+</script>
+{% endblock %}

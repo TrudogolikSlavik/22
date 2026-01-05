@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}Поиск - Knowledge Base{% endblock %}
+{% block header %}Поиск по документам{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Поиск</h5>
+                <form id="searchForm">
+                    <div class="mb-3">
+                        <label for="searchType" class="form-label">Тип поиска:</label>
+                        <select class="form-select" id="searchType">
+                            <option value="keyword">Ключевой поиск</option>
+                            <option value="semantic">Семантический поиск</option>
+                            <option value="hybrid">Гибридный поиск</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="searchQuery" class="form-label">Запрос:</label>
+                        <input type="text" class="form-control" id="searchQuery" placeholder="Введите поисковый запрос..." required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Найти
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8">
+        <div id="searchResults">
+            <div class="alert alert-info">
+                Введите запрос для поиска по вашим документам
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('searchForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const searchType = document.getElementById('searchType').value;
+    const query = document.getElementById('searchQuery').value;
+    const resultsDiv = document.getElementById('searchResults');
+    
+    resultsDiv.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin fa-2x"></i><p>Поиск...</p></div>';
+    
+    let url = '/search/';
+    if (searchType === 'semantic') {
+        url += `semantic?q=${encodeURIComponent(query)}`;
+    } else if (searchType === 'hybrid') {
+        url += `hybrid-search?q=${encodeURIComponent(query)}`;
+    } else {
+        url += `?q=${encodeURIComponent(query)}`;
+    }
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(documents => {
+            if (documents.length === 0) {
+                resultsDiv.innerHTML = '<div class="alert alert-warning">По вашему запросу ничего не найдено</div>';
+                return;
+            }
+            
+            let html = `<h5>Найдено документов: ${documents.length}</h5>`;
+            documents.forEach(doc => {
+                html += `
+                <div class="card mb-3 document-card">
+                    <div class="card-body">
+                        <h5 class="card-title">${doc.title}</h5>
+                        <p class="card-text">${doc.content ? doc.content.substring(0, 200) + '...' : 'Нет содержимого'}</p>
+                        <div class="small text-muted">
+                            Создан: ${new Date(doc.created_at).toLocaleDateString()}
+                            ${doc.file_type ? `<span class="badge bg-secondary ms-2">${doc.file_type}</span>` : ''}
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = html;
+        })
+        .catch(error => {
+            resultsDiv.innerHTML = '<div class="alert alert-danger">Ошибка при поиске</div>';
+            console.error('Search error:', error);
+        });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,92 @@
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData();
+    const fileInput = document.getElementById('file');
+    const titleInput = document.getElementById('title');
+    const autoSummarize = document.getElementById('auto_summarize').checked;
+    const extractKeywords = document.getElementById('extract_keywords').checked;
+    
+    formData.append('file', fileInput.files[0]);
+    formData.append('title', titleInput.value);
+    formData.append('auto_summarize', autoSummarize.toString());
+    formData.append('extract_keywords', extractKeywords.toString());
+    
+    const progressDiv = document.getElementById('uploadProgress');
+    const progressBar = progressDiv.querySelector('.progress-bar');
+    const progressText = document.getElementById('progressText');
+    const resultDiv = document.getElementById('uploadResult');
+    const uploadButton = document.getElementById('uploadButton');
+    
+    // Получаем токен из localStorage
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        alert('Требуется авторизация!');
+        window.location.href = '/login';
+        return;
+    }
+    
+    // Показываем прогресс
+    progressDiv.style.display = 'block';
+    uploadButton.disabled = true;
+    
+    // Имитация прогресса
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        progress += 5;
+        progressBar.style.width = progress + '%';
+        if (progress >= 90) {
+            clearInterval(progressInterval);
+        }
+    }, 100);
+    
+    // Используем новый endpoint для веб-загрузки
+    fetch('/documents/upload-web', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`
+        },
+        body: formData
+    })
+    .then(response => {
+        clearInterval(progressInterval);
+        progressBar.style.width = '100%';
+        progressText.textContent = 'Обработка завершена';
+        
+        if (!response.ok) {
+            throw new Error('Upload failed');
+        }
+        return response.json();
+    })
+    .then(data => {
+        setTimeout(() => {
+            resultDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <h5>Документ успешно загружен!</h5>
+                    <p><strong>Название:</strong> ${data.title}</p>
+                    <p><strong>Тип файла:</strong> ${data.file_type || 'Не указан'}</p>
+                    <p><strong>Размер:</strong> ${data.file_size ? (data.file_size / 1024).toFixed(1) + ' KB' : 'Не указан'}</p>
+                    <a href="/documents" class="btn btn-success">Перейти к документам</a>
+                </div>
+            `;
+            resultDiv.style.display = 'block';
+            progressDiv.style.display = 'none';
+            uploadButton.disabled = false;
+            
+            // Очищаем форму
+            document.getElementById('uploadForm').reset();
+        }, 500);
+    })
+    .catch(error => {
+        clearInterval(progressInterval);
+        resultDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <h5>Ошибка при загрузке</h5>
+                <p>${error.message}</p>
+            </div>
+        `;
+        resultDiv.style.display = 'block';
+        progressDiv.style.display = 'none';
+        uploadButton.disabled = false;
+    });
+});
